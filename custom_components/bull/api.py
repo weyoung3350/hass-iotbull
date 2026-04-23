@@ -49,7 +49,7 @@ def retry(func):
             res = await func(self, *args, **kwargs)
             return res
         except LoginRequiredError as _e:
-            await self.async_login(self.username, self.password)
+            await self.async_login_mos(self.username, self.password)
             res = await func(self, *args, **kwargs)
             return res
         except NetworkError as _e:
@@ -154,7 +154,7 @@ class BullApi:
 
     async def setup(self) -> None:
         """Set up the Bull IoT API."""
-        await self.async_login(self.username, self.password)
+        await self.async_login_mos(self.username, self.password)
         await self.async_get_all_devices_list_mos()
         self.init_mqtt()
         _LOGGER.info("BullApi started")
@@ -214,10 +214,20 @@ class BullApi:
         return hash_obj.hexdigest()
 
     async def async_login_mos(self, username: str, password: str) -> None:
-        """Login to the Bull IoT API (MosHome)."""
-        password = self.encrypt_sha256(
-            self.encrypt_sha256(password) + self.encrypt_sha256("GONGNIU")
-        )
+        """Login to the Bull IoT API (MosHome 公牛智家).
+
+        Note: MosHome 5.x 使用了无法从抓包获取的内置 salt 做密码哈希。
+        因此 password 参数应该是从 mitmproxy 抓取的「已经哈希过的 64 位 hex 字符串」，
+        而不是明文密码。
+
+        获取方式：
+        1. 在 Mac 上跑 mitmproxy（默认 8080 端口）
+        2. iPhone 设置 Wi-Fi 代理指向 Mac，安装并信任 mitmproxy CA
+        3. 退出 MosHome App 后重新登录
+        4. 在 mitmproxy 里找 `POST https://api.iotbull.com/mos/uic/v1/auth/form` 的请求
+        5. 复制 body 里的 `password=` 后面的 64 位 hex 串
+        """
+        # 不再二次哈希，直接把 password 当作已哈希的 hex 串发出
         res = await self.async_make_request(
             "POST",
             "/mos/uic/v1/auth/form",
