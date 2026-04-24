@@ -21,10 +21,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None, non_interactive=False, error=None):
         """Handle the initial step.
 
-        密码字段必须填「已哈希的 SHA256 hex 字符串」（64 位），不是明文密码。
-        因为 MosHome 5.x 用了内置 salt，无法从抓包还原算法。
-        通过 mitmproxy 抓 MosHome App 一次登录请求，复制 body 里 `password=` 后的
-        64 位 hex 即可。详见 api.py 注释。
+        填你 MosHome App 的手机号 + **明文密码**。
+        注：MosHome App 只取密码前 12 字符做哈希，超过部分会被忽略。
         """
         if not self.bull_api:
             self.bull_api = BullApi(self.hass)

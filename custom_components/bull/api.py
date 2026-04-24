@@ -216,24 +216,23 @@ class BullApi:
     async def async_login_mos(self, username: str, password: str) -> None:
         """Login to the Bull IoT API (MosHome 公牛智家).
 
-        Note: MosHome 5.x 使用了无法从抓包获取的内置 salt 做密码哈希。
-        因此 password 参数应该是从 mitmproxy 抓取的「已经哈希过的 64 位 hex 字符串」，
-        而不是明文密码。
+        通过 frida hook MosHome App (com.gongniu.smart 5.1.2) 反向出来的算法：
+            hash = sha256( sha256(password[:12]) + sha256("GONGNIU") )
 
-        获取方式：
-        1. 在 Mac 上跑 mitmproxy（默认 8080 端口）
-        2. iPhone 设置 Wi-Fi 代理指向 Mac，安装并信任 mitmproxy CA
-        3. 退出 MosHome App 后重新登录
-        4. 在 mitmproxy 里找 `POST https://api.iotbull.com/mos/uic/v1/auth/form` 的请求
-        5. 复制 body 里的 `password=` 后面的 64 位 hex 串
+        **关键**：MosHome App 的密码**取前 12 字符**再做哈希。
+        如果用户密码超过 12 位，后面的字符会被 App 忽略。
         """
-        # 不再二次哈希，直接把 password 当作已哈希的 hex 串发出
+        # App 截断密码到 12 字符再哈希
+        truncated = password[:12]
+        hashed = self.encrypt_sha256(
+            self.encrypt_sha256(truncated) + self.encrypt_sha256("GONGNIU")
+        )
         res = await self.async_make_request(
             "POST",
             "/mos/uic/v1/auth/form",
             "application/x-www-form-urlencoded; charset=utf-8",
             {"Login_parameter": "APP_PWD"},
-            f"password={password}&username={username}",
+            f"password={hashed}&username={username}",
         )
 
         if not res["success"]:

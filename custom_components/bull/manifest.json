@@ -12,5 +12,5 @@
   "requirements": [
     "paho-mqtt>=1.6.1"
   ],
-  "version": "0.0.2-moshome5fix"
+  "version": "0.0.3-moshome5-plain-login"
 }
